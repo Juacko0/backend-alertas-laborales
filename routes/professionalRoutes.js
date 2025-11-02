@@ -2,12 +2,17 @@ const express = require("express");
 const router = express.Router();
 const Profesional = require("../models/Profesional");
 const Usuario = require("../models/Usuario");
+const verifyJWT = require("../middleware/verifyJWT");
 
 // ==============================
 // Crear un nuevo profesional y usuario asociado
 // ==============================
-router.post("/addProfessional", async (req, res) => {
+router.post("/addProfessional", verifyJWT, async (req, res) => {
   try {
+    if (req.user.codigo !== "P001") {
+      return res.status(403).json({ message: "⛔ No tienes permisos para crear profesionales" });
+    }
+
     const { codigo, nombres, apellidos, correo, telefono, cargo, horario, contraseña, rol } = req.body;
 
     const profesionalExistente = await Profesional.findOne({ codigo });
@@ -17,11 +22,11 @@ router.post("/addProfessional", async (req, res) => {
 
     // Crear profesional
     const nuevoProfesional = new Profesional({
-        codigo,
-        nombre: `${nombres} ${apellidos}`, // Combinar nombres y apellidos
-        horario, // asegúrate de recibir horario en el body
-        estado: "Activo",
-        codigoPWA: null,
+      codigo,
+      nombre: `${nombres} ${apellidos}`,
+      horario,
+      estado: "Activo",
+      codigoPWA: null,
     });
     await nuevoProfesional.save();
 
@@ -48,7 +53,7 @@ router.post("/addProfessional", async (req, res) => {
 // ==============================
 // Obtener todos los profesionales
 // ==============================
-router.get("/listProfessional", async (req, res) => {
+router.get("/listProfessional", verifyJWT, async (req, res) => {
   try {
     const profesionales = await Profesional.find();
     res.json(profesionales);
@@ -61,8 +66,12 @@ router.get("/listProfessional", async (req, res) => {
 // ==============================
 // Actualizar profesional
 // ==============================
-router.put("/updateProfessional/:codigo", async (req, res) => {
+router.put("/updateProfessional/:codigo", verifyJWT, async (req, res) => {
   try {
+    if (req.user.codigo !== "P001") {
+      return res.status(403).json({ message: "⛔ No tienes permisos para editar profesionales" });
+    }
+
     const { codigo } = req.params;
     const datosActualizados = req.body;
     const profesional = await Profesional.findOneAndUpdate({ codigo }, datosActualizados, { new: true });
@@ -81,11 +90,16 @@ router.put("/updateProfessional/:codigo", async (req, res) => {
 // ==============================
 // Eliminar profesional
 // ==============================
-router.delete("/deleteProfessional/:codigo", async (req, res) => {
+router.delete("/deleteProfessional/:codigo", verifyJWT, async (req, res) => {
   try {
+    if (req.user.codigo !== "P001") {
+      return res.status(403).json({ message: "⛔ No tienes permisos para eliminar profesionales" });
+    }
+
     const { codigo } = req.params;
     await Profesional.deleteOne({ codigo });
     await Usuario.deleteOne({ codigo });
+
     res.json({ message: "🗑️ Profesional y usuario eliminados" });
   } catch (err) {
     console.error("❌ Error al eliminar profesional:", err);
