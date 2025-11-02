@@ -3,6 +3,7 @@ const router = express.Router();
 const Usuario = require("../models/Usuario");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const verifyJWT = require("../middleware/verifyJWT");
 
 const SECRET_KEY = process.env.JWT_SECRET || "miSuperSecreto123";
 
@@ -40,7 +41,7 @@ router.post("/login", async (req, res) => {
     const valid = await bcrypt.compare(contraseña, user.contraseña);
     if (!valid) return res.status(401).json({ message: "Contraseña incorrecta" });
 
-    const token = jwt.sign({ usuario: user.usuario, rol: user.rol }, SECRET_KEY, { expiresIn: "2h" });
+    const token = jwt.sign( { usuario: user.usuario, rol: user.rol, codigo: user.codigo }, SECRET_KEY, { expiresIn: "2h" } );
 
     res.json({ message: "✅ Login exitoso", token, rol: user.rol, codigo: user.codigo });
   } catch (err) {
@@ -61,6 +62,18 @@ router.get("/verify", (req, res) => {
     res.json({ valido: true, usuario: decoded });
   } catch (err) {
     res.status(401).json({ valido: false, message: "Token inválido" });
+  }
+});
+
+// ==============================
+// Verificar sesión JWT
+// ==============================
+router.get("/me", verifyJWT, async (req, res) => {
+  try {
+    res.json({ usuario: req.user.usuario, rol: req.user.rol, codigo: req.user.codigo });
+  } catch (err) {
+    console.error("❌ Error en /me:", err);
+    res.status(500).json({ message: "Error al verificar sesión" });
   }
 });
 

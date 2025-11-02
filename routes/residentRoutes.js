@@ -1,12 +1,18 @@
 const express = require("express");
 const router = express.Router();
 const Resident = require("../models/Resident");
+const verifyJWT = require("../middleware/verifyJWT");
 
 // ==============================
 // Crear nuevo residente
 // ==============================
-router.post("/addResident", async (req, res) => {
+router.post("/addResident", verifyJWT, async (req, res) => {
   try {
+    // Solo el usuario con código P001 puede registrar
+    if (req.user.codigo !== "P001") {
+      return res.status(403).json({ message: "⛔ No tienes permisos para registrar residentes" });
+    }
+
     const nuevoResidente = new Resident(req.body);
     await nuevoResidente.save();
     res.status(201).json({ message: "✅ Residente registrado", residente: nuevoResidente });
@@ -32,8 +38,12 @@ router.get("/listResidents", async (req, res) => {
 // ==============================
 // Actualizar residente
 // ==============================
-router.put("/updateResident/:id", async (req, res) => {
+router.put("/updateResident/:id", verifyJWT, async (req, res) => {
   try {
+    if (req.user.codigo !== "P001") {
+      return res.status(403).json({ message: "⛔ No tienes permisos para actualizar residentes" });
+    }
+
     const { id } = req.params;
     const actualizado = await Resident.findByIdAndUpdate(id, req.body, { new: true });
     res.json({ message: "✅ Residente actualizado", residente: actualizado });
@@ -46,8 +56,12 @@ router.put("/updateResident/:id", async (req, res) => {
 // ==============================
 // Eliminar residente
 // ==============================
-router.delete("/deleteResident/:id", async (req, res) => {
+router.delete("/deleteResident/:id", verifyJWT, async (req, res) => {
   try {
+    if (req.user.codigo !== "P001") {
+      return res.status(403).json({ message: "⛔ No tienes permisos para eliminar residentes" });
+    }
+
     const { id } = req.params;
     await Resident.findByIdAndDelete(id);
     res.json({ message: "🗑️ Residente eliminado" });
