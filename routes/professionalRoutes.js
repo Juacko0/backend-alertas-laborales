@@ -8,6 +8,7 @@ const verifyJWT = require("../middleware/verifyJWT");
 // Crear un nuevo profesional y usuario asociado
 // ==============================
 router.post("/addProfessional", verifyJWT, async (req, res) => {
+  console.log("Usuario que intenta crear:", req.user); // <--- ver el token decodificado
   try {
     if (req.user.codigo !== "P001") {
       return res.status(403).json({ message: "⛔ No tienes permisos para crear profesionales" });
