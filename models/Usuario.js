@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
 const usuarioSchema = new mongoose.Schema({
+  codigo: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
   usuario: {
     type: String,
     required: true,
@@ -14,11 +20,11 @@ const usuarioSchema = new mongoose.Schema({
   },
   rol: {
     type: String,
-    enum: ["Administrador",  "Trabajador", "Enfermero", "Doctor"],
+    enum: ["Administrador", "Trabajador", "Enfermero", "Doctor"],
     default: "Trabajador"
   },
-  horaInicio : {type: String },
-  horaFin: {type: String }
+  horaInicio: { type: String },
+  horaFin: { type: String }
 }, {
   timestamps: true
 });
