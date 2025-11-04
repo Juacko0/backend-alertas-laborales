@@ -1,12 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const Incident = require("../models/Incident");
-const verifyJWT = require("../middlewares/verifyJWT"); // ✅ Importa el middleware
 
 // ==============================
 // Crear incidente
 // ==============================
-router.post("/addIncident", verifyJWT, async (req, res) => {
+router.post("/addIncident", async (req, res) => {
   try {
     const incidentData = req.body;
     const newIncident = new Incident(incidentData);
@@ -21,7 +20,7 @@ router.post("/addIncident", verifyJWT, async (req, res) => {
 // ==============================
 // Obtener todos los incidentes
 // ==============================
-router.get("/listIncidents", verifyJWT, async (req, res) => {
+router.get("/listIncidents", async (req, res) => {
   try {
     const incidents = await Incident.find().sort({ createdAt: -1 });
     res.status(200).json(incidents);
@@ -34,7 +33,7 @@ router.get("/listIncidents", verifyJWT, async (req, res) => {
 // ==============================
 // Filtrar incidentes
 // ==============================
-router.post("/filterIncidents", verifyJWT, async (req, res) => {
+router.post("/filterIncidents", async (req, res) => {
   try {
     const { date, state, location } = req.body;
     const query = {};
@@ -60,7 +59,7 @@ router.post("/filterIncidents", verifyJWT, async (req, res) => {
 // ==============================
 // Actualizar incidente completo
 // ==============================
-router.put("/updateIncident/:id", verifyJWT, async (req, res) => {
+router.put("/updateIncident/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updatedIncident = await Incident.findByIdAndUpdate(id, req.body, { new: true });
@@ -74,7 +73,7 @@ router.put("/updateIncident/:id", verifyJWT, async (req, res) => {
 // ==============================
 // Confirmar si fue una caída real
 // ==============================
-router.put("/confirmFall/:id", verifyJWT, async (req, res) => {
+router.put("/confirmFall/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { isFall, confirmedBy } = req.body;
@@ -96,7 +95,7 @@ router.put("/confirmFall/:id", verifyJWT, async (req, res) => {
 // ==============================
 // Registrar intervención médica
 // ==============================
-router.put("/addIntervention/:id", verifyJWT, async (req, res) => {
+router.put("/addIntervention/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { receivedAt, attendedAt, attendedBy, injuryLevel, confirmedBy } = req.body;
