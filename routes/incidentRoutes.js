@@ -1,11 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const Incident = require("../models/Incident");
+const verifyJWT = require("../middlewares/verifyJWT"); // ✅ Importa el middleware
 
 // ==============================
 // Crear incidente
 // ==============================
-router.post("/addIncident", async (req, res) => {
+router.post("/addIncident", verifyJWT, async (req, res) => {
   try {
     const incidentData = req.body;
     const newIncident = new Incident(incidentData);
@@ -20,7 +21,7 @@ router.post("/addIncident", async (req, res) => {
 // ==============================
 // Obtener todos los incidentes
 // ==============================
-router.get("/listIncidents", async (req, res) => {
+router.get("/listIncidents", verifyJWT, async (req, res) => {
   try {
     const incidents = await Incident.find().sort({ createdAt: -1 });
     res.status(200).json(incidents);
@@ -33,7 +34,7 @@ router.get("/listIncidents", async (req, res) => {
 // ==============================
 // Filtrar incidentes
 // ==============================
-router.post("/filterIncidents", async (req, res) => {
+router.post("/filterIncidents", verifyJWT, async (req, res) => {
   try {
     const { date, state, location } = req.body;
     const query = {};
@@ -57,9 +58,9 @@ router.post("/filterIncidents", async (req, res) => {
 });
 
 // ==============================
-// Actualizar incidente
+// Actualizar incidente completo
 // ==============================
-router.put("/updateIncident/:id", async (req, res) => {
+router.put("/updateIncident/:id", verifyJWT, async (req, res) => {
   try {
     const { id } = req.params;
     const updatedIncident = await Incident.findByIdAndUpdate(id, req.body, { new: true });
@@ -67,6 +68,60 @@ router.put("/updateIncident/:id", async (req, res) => {
   } catch (err) {
     console.error("❌ Error al actualizar incidente:", err);
     res.status(500).json({ message: "Error al actualizar incidente" });
+  }
+});
+
+// ==============================
+// Confirmar si fue una caída real
+// ==============================
+router.put("/confirmFall/:id", verifyJWT, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isFall, confirmedBy } = req.body;
+
+    const updated = await Incident.findByIdAndUpdate(
+      id,
+      { isFall, confirmedBy },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ message: "Incidente no encontrado" });
+    res.json({ message: "✅ Confirmación registrada", incident: updated });
+  } catch (err) {
+    console.error("❌ Error al confirmar caída:", err);
+    res.status(500).json({ message: "Error al confirmar caída" });
+  }
+});
+
+// ==============================
+// Registrar intervención médica
+// ==============================
+router.put("/addIntervention/:id", verifyJWT, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { receivedAt, attendedAt, attendedBy, injuryLevel, confirmedBy } = req.body;
+
+    const updated = await Incident.findByIdAndUpdate(
+      id,
+      {
+        state: "Atendido",
+        confirmedBy,
+        intervention: {
+          huboIntervencion: true,
+          receivedAt,
+          attendedAt,
+          attendedBy,
+          injuryLevel
+        }
+      },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ message: "Incidente no encontrado" });
+    res.json({ message: "✅ Intervención registrada correctamente", incident: updated });
+  } catch (err) {
+    console.error("❌ Error al registrar intervención:", err);
+    res.status(500).json({ message: "Error al registrar intervención" });
   }
 });
 
