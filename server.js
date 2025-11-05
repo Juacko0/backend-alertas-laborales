@@ -1,4 +1,3 @@
-require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const bodyParser = require("body-parser");
@@ -8,6 +7,10 @@ const webpush = require("web-push");
 const jwt = require("jsonwebtoken");
 const http = require("http");
 const { Server } = require("socket.io");
+require("dotenv").config();
+
+console.log("VAPID_PUBLIC_KEY:", process.env.VAPID_PUBLIC_KEY ? "✅ cargada" : "❌ no cargada");
+console.log("VAPID_PRIVATE_KEY:", process.env.VAPID_PRIVATE_KEY ? "✅ cargada" : "❌ no cargada");
 
 const app = express();
 const server = http.createServer(app); // usamos http para socket.io
@@ -21,6 +24,8 @@ const SECRET_KEY = process.env.JWT_SECRET || "miSuperSecreto123";
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
+
+app.use(express.json());
 
 // Rutas existentes
 app.use("/api/notifications", require("./routes/notificationsRoutes"));
