@@ -91,3 +91,5 @@ router.post("/notify", async (req, res) => {
     res.status(500).json({ message: "Error enviando notificaciones" });
   }
 });
+
+module.exports = router;
