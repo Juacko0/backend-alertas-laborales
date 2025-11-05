@@ -52,28 +52,42 @@ router.post("/subscribe", async (req, res) => {
   }
 });
 
-// Enviar notificaciones a todos
+// Enviar notificaciones a todos los profesionales
 router.post("/notify", async (req, res) => {
   try {
     const { title, message } = req.body;
     const payload = JSON.stringify({ title, body: message });
-    const subscriptions = await Subscription.find();
 
-    const notifications = subscriptions.map(sub =>
-      webpush.sendNotification(sub, payload).catch(async err => {
-        console.error("Error al enviar:", err);
+    // Buscar todos los profesionales que tengan una suscripción PWA
+    const profesionales = await Profesional.find({ suscripcionPWA: { $exists: true } });
+
+    if (profesionales.length === 0) {
+      return res.status(404).json({ message: "No hay suscripciones registradas" });
+    }
+
+    // Enviar notificación a cada profesional con suscripción
+    const notifications = profesionales.map(async (prof) => {
+      try {
+        await webpush.sendNotification(prof.suscripcionPWA, payload);
+        console.log(`✅ Notificación enviada a ${prof.codigo}`);
+      } catch (err) {
+        console.error(`Error al enviar a ${prof.codigo}:`, err);
+
+        // Si la suscripción es inválida, eliminarla
         if (err.statusCode === 410 || err.statusCode === 404) {
-          await Subscription.deleteOne({ endpoint: sub.endpoint });
+          await Profesional.updateOne(
+            { codigo: prof.codigo },
+            { $unset: { suscripcionPWA: "" } }
+          );
+          console.warn(`❌ Suscripción eliminada de ${prof.codigo}`);
         }
-      })
-    );
+      }
+    });
 
     await Promise.all(notifications);
-    res.status(200).json({ message: "✅ Notificaciones enviadas" });
+    res.status(200).json({ message: "✅ Notificaciones enviadas a todos los profesionales" });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error general al enviar notificaciones:", err);
     res.status(500).json({ message: "Error enviando notificaciones" });
   }
 });
-
-module.exports = router;
