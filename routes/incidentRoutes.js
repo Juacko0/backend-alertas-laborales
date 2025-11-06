@@ -1,9 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const Incident = require("../models/Incident");
+const fetch = require("node-fetch"); // 👈 necesario para hacer peticiones HTTP internas
+
+// URL base de tu backend (usa variable de entorno si existe)
+const BACKEND_URL = process.env.BACKEND_URL || "https://backend-alertas-laborales.onrender.com";
 
 // ==============================
-// Crear incidente
+// 🆕 Crear incidente + notificar
 // ==============================
 router.post("/addIncident", async (req, res) => {
   try {
@@ -12,10 +16,10 @@ router.post("/addIncident", async (req, res) => {
     // ✅ Se asegura que el campo intervention tenga la hora real de recepción
     const newIncident = new Incident({
       ...incidentData,
-      state: "Pendiente", // Estado inicial más claro
+      state: "Pendiente", // Estado inicial
       intervention: {
         huboIntervencion: false,
-        receivedAt: new Date(), // Marca la hora exacta en que llega la alerta
+        receivedAt: new Date(), // Hora exacta de recepción
         attendedAt: null,
         attendedBy: "",
         injuryLevel: null,
@@ -23,8 +27,32 @@ router.post("/addIncident", async (req, res) => {
     });
 
     await newIncident.save();
+
+    console.log("✅ Incidente registrado correctamente:", newIncident._id);
+
+    // ===================================
+    // 🚨 Enviar notificación al personal
+    // ===================================
+    try {
+      await fetch(`${BACKEND_URL}/api/notifications/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "🚨 Alerta desde el panel Electron",
+          message: newIncident.detail || "Se ha detectado una nueva incidencia.",
+          incidentId: newIncident._id,   // 👈 se envía el ID del incidente
+          location: newIncident.location,
+          detail: newIncident.detail,
+          isFall: newIncident.isFall,
+        }),
+      });
+      console.log("📡 Notificación enviada con éxito a los profesionales");
+    } catch (notifyErr) {
+      console.error("⚠️ Error al enviar la notificación PWA:", notifyErr);
+    }
+
     res.status(201).json({
-      message: "✅ Incidente registrado correctamente",
+      message: "✅ Incidente registrado y notificación enviada correctamente",
       incident: newIncident,
     });
   } catch (err) {
@@ -34,7 +62,7 @@ router.post("/addIncident", async (req, res) => {
 });
 
 // ==============================
-// Obtener todos los incidentes
+// 📋 Obtener todos los incidentes
 // ==============================
 router.get("/listIncidents", async (req, res) => {
   try {
@@ -47,7 +75,7 @@ router.get("/listIncidents", async (req, res) => {
 });
 
 // ==============================
-// Filtrar incidentes
+// 🔍 Filtrar incidentes
 // ==============================
 router.post("/filterIncidents", async (req, res) => {
   try {
@@ -73,7 +101,7 @@ router.post("/filterIncidents", async (req, res) => {
 });
 
 // ==============================
-// Actualizar incidente completo
+// ✏️ Actualizar incidente completo
 // ==============================
 router.put("/updateIncident/:id", async (req, res) => {
   try {
@@ -88,7 +116,7 @@ router.put("/updateIncident/:id", async (req, res) => {
 });
 
 // ==============================
-// Confirmar si fue una caída real
+// ✅ Confirmar si fue una caída real
 // ==============================
 router.put("/confirmFall/:id", async (req, res) => {
   try {
@@ -110,7 +138,7 @@ router.put("/confirmFall/:id", async (req, res) => {
 });
 
 // ==============================
-// Registrar intervención médica
+// 🏥 Registrar intervención médica
 // ==============================
 router.put("/addIntervention/:id", async (req, res) => {
   try {
@@ -124,7 +152,7 @@ router.put("/addIntervention/:id", async (req, res) => {
         state: "Atendido",
         confirmedBy,
         "intervention.huboIntervencion": true,
-        "intervention.attendedAt": new Date(), // Tiempo real del registro
+        "intervention.attendedAt": new Date(),
         "intervention.attendedBy": attendedBy,
         "intervention.injuryLevel": injuryLevel,
       },
