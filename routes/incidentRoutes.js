@@ -165,7 +165,7 @@ router.put("/addIntervention/:id", async (req, res) => {
     };
 
     // Si el móvil envía estos campos, los actualizamos también
-    if (reportedBy) updateData.reportedBy = reportedBy;
+    if (reportedBy) { updateData.reportedBy = reportedBy; updateData.residentName = reportedBy;} // 👈 añade esta línea 
     if (location) updateData.location = location;
     if (detail) updateData.detail = detail;
 
