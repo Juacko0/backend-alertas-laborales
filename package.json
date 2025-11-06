@@ -4,9 +4,9 @@
   "description": "Backend para alertas laborales en tiempo real",
   "main": "server.js",
   "scripts": {
-  "start": "cross-env NODE_ENV=development electron .",
-  "build": "cross-env NODE_ENV=production electron ."
-    },
+    "start": "cross-env NODE_ENV=development electron .",
+    "build": "cross-env NODE_ENV=production electron ."
+  },
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "body-parser": "^1.20.2",
@@ -15,6 +15,7 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.0",
+    "node-fetch": "^3.3.2",
     "socket.io": "^4.8.1",
     "web-push": "^3.6.7"
   }
