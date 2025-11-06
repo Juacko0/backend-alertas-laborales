@@ -12,9 +12,13 @@ router.post("/addIncident", async (req, res) => {
     // ✅ Se asegura que el campo intervention tenga la hora real de recepción
     const newIncident = new Incident({
       ...incidentData,
+      state: "Pendiente", // Estado inicial más claro
       intervention: {
         huboIntervencion: false,
         receivedAt: new Date(), // Marca la hora exacta en que llega la alerta
+        attendedAt: null,
+        attendedBy: "",
+        injuryLevel: null,
       },
     });
 
@@ -75,6 +79,7 @@ router.put("/updateIncident/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updatedIncident = await Incident.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updatedIncident) return res.status(404).json({ message: "Incidente no encontrado" });
     res.json(updatedIncident);
   } catch (err) {
     console.error("❌ Error al actualizar incidente:", err);
@@ -112,14 +117,14 @@ router.put("/addIntervention/:id", async (req, res) => {
     const { id } = req.params;
     const { attendedBy, injuryLevel, confirmedBy } = req.body;
 
-    // ✅ Se registra automáticamente la hora real de atención
+    // 🕓 Se registra automáticamente la hora real de atención
     const updated = await Incident.findByIdAndUpdate(
       id,
       {
         state: "Atendido",
         confirmedBy,
         "intervention.huboIntervencion": true,
-        "intervention.attendedAt": new Date(), // 👈 Tiempo real del registro
+        "intervention.attendedAt": new Date(), // Tiempo real del registro
         "intervention.attendedBy": attendedBy,
         "intervention.injuryLevel": injuryLevel,
       },
@@ -127,7 +132,11 @@ router.put("/addIntervention/:id", async (req, res) => {
     );
 
     if (!updated) return res.status(404).json({ message: "Incidente no encontrado" });
-    res.json({ message: "✅ Intervención registrada correctamente", incident: updated });
+
+    res.json({
+      message: "✅ Intervención registrada correctamente",
+      incident: updated,
+    });
   } catch (err) {
     console.error("❌ Error al registrar intervención:", err);
     res.status(500).json({ message: "Error al registrar intervención" });
