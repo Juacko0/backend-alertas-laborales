@@ -3,6 +3,7 @@ const router = express.Router();
 const webpush = require("web-push");
 const Subscription = require("../models/Subscription");
 const Profesional = require("../models/Profesional");
+const Incident = require("../models/Incident");
 
 // ====================================
 // 🔑 Configuración de claves VAPID
@@ -67,26 +68,46 @@ router.post("/notify", async (req, res) => {
   try {
     const { title, message, incidentId, location, detail, isFall } = req.body;
 
-    // ✅ Aseguramos que haya al menos un título o mensaje
-    if (!title || !message) {
-      return res.status(400).json({ message: "Faltan campos obligatorios (title o message)" });
+    // ✅ Crear incidente si no se pasó uno
+    let realIncidentId = incidentId;
+    if (!realIncidentId) {
+      const nuevoIncidente = new Incident({
+        location: location || "Sin ubicación especificada",
+        detail: detail || "Sin detalles adicionales",
+        isFall: isFall || false,
+        state: "Pendiente",
+        intervention: {
+          huboIntervencion: false,
+          receivedAt: new Date(),
+          attendedAt: null,
+          attendedBy: "",
+          injuryLevel: null,
+        },
+      });
+
+      await nuevoIncidente.save();
+      realIncidentId = nuevoIncidente._id;
+
+      console.log("🆕 Incidente creado automáticamente con ID:", realIncidentId);
     }
 
-    // ✅ Payload mejorado con ID del incidente y metadatos
+    // ✅ Payload corregido (ahora siempre lleva un ID real)
     const payload = JSON.stringify({
       title: title || "🚨 Nueva Alerta",
       body: message,
       data: {
-        _id: incidentId || null,  // 👈 ID del incidente
+        _id: realIncidentId,
         location: location || "Sin ubicación especificada",
         detail: detail || "Sin detalles adicionales",
         isFall: isFall || false,
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     });
 
     // ✅ Buscar profesionales suscritos
-    const profesionales = await Profesional.find({ suscripcionPWA: { $exists: true } });
+    const profesionales = await Profesional.find({
+      suscripcionPWA: { $exists: true, $ne: null },
+    });
 
     if (profesionales.length === 0) {
       return res.status(404).json({ message: "No hay suscripciones registradas" });
@@ -117,7 +138,7 @@ router.post("/notify", async (req, res) => {
 
     res.status(200).json({
       message: "✅ Notificaciones enviadas correctamente",
-      enviados: profesionales.length,
+      incidentId: realIncidentId, // 👈 Devuelve siempre el ID del incidente real
     });
   } catch (err) {
     console.error("❌ Error general al enviar notificaciones:", err);
