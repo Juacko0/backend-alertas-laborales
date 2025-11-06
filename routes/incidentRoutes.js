@@ -8,9 +8,21 @@ const Incident = require("../models/Incident");
 router.post("/addIncident", async (req, res) => {
   try {
     const incidentData = req.body;
-    const newIncident = new Incident(incidentData);
+
+    // ✅ Se asegura que el campo intervention tenga la hora real de recepción
+    const newIncident = new Incident({
+      ...incidentData,
+      intervention: {
+        huboIntervencion: false,
+        receivedAt: new Date(), // Marca la hora exacta en que llega la alerta
+      },
+    });
+
     await newIncident.save();
-    res.status(201).json({ message: "✅ Incidente registrado correctamente", incident: newIncident });
+    res.status(201).json({
+      message: "✅ Incidente registrado correctamente",
+      incident: newIncident,
+    });
   } catch (err) {
     console.error("❌ Error al guardar incidente:", err);
     res.status(500).json({ message: "Error al guardar el incidente" });
@@ -98,20 +110,18 @@ router.put("/confirmFall/:id", async (req, res) => {
 router.put("/addIntervention/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { receivedAt, attendedAt, attendedBy, injuryLevel, confirmedBy } = req.body;
+    const { attendedBy, injuryLevel, confirmedBy } = req.body;
 
+    // ✅ Se registra automáticamente la hora real de atención
     const updated = await Incident.findByIdAndUpdate(
       id,
       {
         state: "Atendido",
         confirmedBy,
-        intervention: {
-          huboIntervencion: true,
-          receivedAt,
-          attendedAt,
-          attendedBy,
-          injuryLevel
-        }
+        "intervention.huboIntervencion": true,
+        "intervention.attendedAt": new Date(), // 👈 Tiempo real del registro
+        "intervention.attendedBy": attendedBy,
+        "intervention.injuryLevel": injuryLevel,
       },
       { new: true }
     );
