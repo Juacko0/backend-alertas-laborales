@@ -152,26 +152,29 @@ router.put("/confirmFall/:id", async (req, res) => {
 router.put("/addIntervention/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { attendedBy, injuryLevel, confirmedBy } = req.body;
+    const { attendedBy, injuryLevel, confirmedBy, reportedBy, location, detail } = req.body;
 
     // 🕓 Se registra automáticamente la hora real de atención
-    const updated = await Incident.findByIdAndUpdate(
-      id,
-      {
-        state: "Atendido",
-        confirmedBy,
-        "intervention.huboIntervencion": true,
-        "intervention.attendedAt": new Date(),
-        "intervention.attendedBy": attendedBy,
-        "intervention.injuryLevel": injuryLevel,
-      },
-      { new: true }
-    );
+    const updateData = {
+      state: "Atendido",
+      confirmedBy,
+      "intervention.huboIntervencion": true,
+      "intervention.attendedAt": new Date(),
+      "intervention.attendedBy": attendedBy,
+      "intervention.injuryLevel": injuryLevel,
+    };
+
+    // Si el móvil envía estos campos, los actualizamos también
+    if (reportedBy) updateData.reportedBy = reportedBy;
+    if (location) updateData.location = location;
+    if (detail) updateData.detail = detail;
+
+    const updated = await Incident.findByIdAndUpdate(id, updateData, { new: true });
 
     if (!updated) return res.status(404).json({ message: "Incidente no encontrado" });
 
     res.json({
-      message: "✅ Intervención registrada correctamente",
+      message: "✅ Intervención registrada correctamente con los datos del móvil",
       incident: updated,
     });
   } catch (err) {
