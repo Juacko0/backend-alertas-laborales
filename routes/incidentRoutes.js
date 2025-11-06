@@ -13,13 +13,12 @@ router.post("/addIncident", async (req, res) => {
   try {
     const incidentData = req.body;
 
-    // ✅ Se asegura que el campo intervention tenga la hora real de recepción
     const newIncident = new Incident({
       ...incidentData,
-      state: "Pendiente", // Estado inicial
+      state: "Pendiente",
       intervention: {
         huboIntervencion: false,
-        receivedAt: new Date(), // Hora exacta de recepción
+        receivedAt: new Date(),
         attendedAt: null,
         attendedBy: "",
         injuryLevel: null,
@@ -28,31 +27,41 @@ router.post("/addIncident", async (req, res) => {
 
     await newIncident.save();
 
-    console.log("✅ Incidente registrado correctamente:", newIncident._id);
+    console.log("✅ Incidente registrado:", newIncident._id);
 
-    // ===================================
-    // 🚨 Enviar notificación al personal
-    // ===================================
-    try {
-      await fetch(`${BACKEND_URL}/api/notifications/notify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: "🚨 Alerta desde el panel Electron",
-          message: newIncident.detail || "Se ha detectado una nueva incidencia.",
-          incidentId: newIncident._id,   // 👈 se envía el ID del incidente
-          location: newIncident.location,
-          detail: newIncident.detail,
-          isFall: newIncident.isFall,
-        }),
-      });
-      console.log("📡 Notificación enviada con éxito a los profesionales");
-    } catch (notifyErr) {
-      console.error("⚠️ Error al enviar la notificación PWA:", notifyErr);
-    }
+    // === Enviar notificación PWA solo con datos esenciales ===
+    const profesionales = await Profesional.find({
+      suscripcionPWA: { $exists: true, $ne: null },
+    });
+
+    const payload = JSON.stringify({
+      title: "🚨 Nueva Alerta en el Centro",
+      body: "Se ha detectado un posible incidente. Revísalo ahora.",
+      data: {
+        _id: newIncident._id, // 👈 ID real del incidente
+        time: newIncident.createdAt,
+      },
+    });
+
+    const notifications = profesionales.map(async (prof) => {
+      try {
+        await webpush.sendNotification(prof.suscripcionPWA, payload);
+        console.log(`✅ Notificación enviada a ${prof.codigo}`);
+      } catch (err) {
+        console.error(`Error al enviar a ${prof.codigo}:`, err);
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          await Profesional.updateOne(
+            { codigo: prof.codigo },
+            { $unset: { suscripcionPWA: "" } }
+          );
+        }
+      }
+    });
+
+    await Promise.all(notifications);
 
     res.status(201).json({
-      message: "✅ Incidente registrado y notificación enviada correctamente",
+      message: "✅ Incidente registrado y notificación enviada",
       incident: newIncident,
     });
   } catch (err) {
